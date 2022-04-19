@@ -1,0 +1,6 @@
+.idea
+
+# do not commit private driving files
+*.csv 
+# nor the result of processing these files
+*.pickle

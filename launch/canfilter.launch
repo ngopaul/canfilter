@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<launch>
+
+<arg name="robot" default="toyota"/>
+<arg name="csvfile" default="~/catkin_ws/src/canfilter/2020-07-08-15-15-54_2T3MWRFVXLW056972_CAN_Messages.csv"/>
+<arg name="time_col" default="Time"/>
+<arg name="msg_id_col" default="MessageID"/>
+<arg name="msg_col" default="Message"/>
+<arg name="known_mode_times" default="None"/>
+<arg name="msg_topic_name" default="msg"/>
+<arg name="realtime" default="true"/>
+<arg name="decoupled" default="false"/>
+<group ns="$(arg robot)">
+    <node pkg="canfilter" type="csv_replay.py" name="csv_replay_$(arg robot)" output="screen"
+    required="true" args="$(arg csvfile) $(arg time_col) $(arg msg_id_col) $(arg msg_col) $(arg realtime) $(arg msg_topic_name)">
+    </node>
+    <node pkg="canfilter" type="set_mode.py" name="set_mode_$(arg robot)" output="screen" required="true" args="$(arg known_mode_times) $(arg msg_topic_name)">
+    </node>
+
+</group>
+</launch>
