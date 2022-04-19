@@ -9,12 +9,13 @@
 <arg name="known_mode_times" default="None"/>
 <arg name="msg_topic_name" default="msg"/>
 <arg name="realtime" default="true"/>
+<arg name="output_loc" default="/home/azureorbit/catkin_ws/src/canfilter/"/>
 <arg name="decoupled" default="false"/>
 <group ns="$(arg robot)">
     <node pkg="canfilter" type="csv_replay.py" name="csv_replay_$(arg robot)" output="screen"
     required="true" args="$(arg csvfile) $(arg time_col) $(arg msg_id_col) $(arg msg_col) $(arg realtime) $(arg msg_topic_name)">
     </node>
-    <node pkg="canfilter" type="set_mode.py" name="set_mode_$(arg robot)" output="screen" required="true" args="$(arg known_mode_times) $(arg msg_topic_name)">
+    <node pkg="canfilter" type="set_mode.py" name="set_mode_$(arg robot)" output="screen" required="true" args="$(arg known_mode_times) $(arg msg_topic_name) $(arg output_loc)">
     </node>
 
 </group>

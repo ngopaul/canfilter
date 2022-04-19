@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import math
 import numpy as np
+import pandas
 import seaborn as sns
 import pandas as pd
 from typing import Dict, List, Collection
@@ -293,3 +294,78 @@ def preprocess(can_dataframe: pd.DataFrame) -> (Dict, Dict):
         bit_flip_count = np.diff(ys, axis=0).sum(axis=0)
         bit_flip_rates[id] = bit_flip_count / signal_length
     return bit_flip_rates, raw_signal_values
+
+
+def find_runs(x):
+    """Find runs of consecutive items in an array.
+    Credit: @alimanfoo
+    """
+
+    # ensure array
+    x = np.asanyarray(x)
+    if x.ndim != 1:
+        raise ValueError('only 1D array supported')
+    n = x.shape[0]
+
+    # handle empty array
+    if n == 0:
+        return np.array([]), np.array([]), np.array([])
+
+    else:
+        # find run starts
+        loc_run_start = np.empty(n, dtype=bool)
+        loc_run_start[0] = True
+        np.not_equal(x[:-1], x[1:], out=loc_run_start[1:])
+        run_starts = np.nonzero(loc_run_start)[0]
+
+        # find run values
+        run_values = x[loc_run_start]
+
+        # find run lengths
+        run_lengths = np.diff(np.append(run_starts, n))
+
+        return run_values, run_starts, run_lengths
+
+
+def score_messages(message_relevancy_dict: Dict) -> pd.DataFrame:
+    """
+    Given a dictionary message_relevancy dictionary, return the scores of each of the relevant messages, in order,
+    as a pandas dataframe.
+    :param message_relevancy_dict: Mapping from message ID to a boolean array, where the boolean values represent
+        whether the bit is relevant or not. There may be some binary bits labeled as relevant when they are not;
+        this is why scoring them is important.
+    :return:
+        scored_messages, a pandas dataframe with columns:
+        MessageID | Score | BitwiseRelevancy
+    """
+    # The score is as follows:
+    # Score = Run Score + True Count Score
+    # RunScore = (# of 3-4 long runs of True) + (# of 5-6 long runs of True) * 2 + (# 7+ long runs of True) * 3
+    # True Count Score = (# Trues)/64 * 5
+
+    message_scores = []
+
+    for messageID, boolean_relevancy in message_relevancy_dict.items():
+        run_score = 0
+        run_values, run_starts, run_lengths = find_runs(boolean_relevancy)
+        for i, run_value in enumerate(run_values):
+            if run_value:
+                if 3 <= run_lengths[i] <= 4:
+                    run_score += 1
+                elif 5 <= run_lengths[i] <= 6:
+                    run_score += 2
+                elif run_lengths[i] >= 7:
+                    run_score += 3
+        true_count_score = sum(boolean_relevancy) / 64 * 5
+        score = run_score + true_count_score
+        message_scores.append(
+            {
+                "MessageID": messageID,
+                "Score": score,
+                "BitwiseRelevancy": ''.join(boolean_relevancy.astype(int).astype(str))
+            }
+        )
+
+    scored_messages = pd.DataFrame(message_scores)
+    scored_messages.sort_values("Score", ascending=False, inplace=True)
+    return scored_messages

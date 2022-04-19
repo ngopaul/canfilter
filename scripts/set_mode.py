@@ -23,6 +23,7 @@ This allows distinct modes to be filtered out.
 import sys
 import time
 import pickle
+import os
 
 from utils import *
 from threading import Lock
@@ -139,6 +140,7 @@ def main(argv):
 
     known_mode_times = argv[0]
     msg_topic_name = argv[1]
+    output_loc = argv[2]
     known_mode_time_and_state = None
     if not known_mode_times == "None":
         print(f"Running with known_mode_times from file {known_mode_times}.")
@@ -176,9 +178,9 @@ def main(argv):
     else:
         rospy.spin()
 
-    with open("/home/azureorbit/catkin_ws/src/canfilter/cruise_enabled_messages.pickle", "wb") as f:
+    with open(os.path.join(output_loc, "cruise_enabled_messages.pickle"), "wb") as f:
         pickle.dump(cruise_enabled_messages, f)
-    with open("/home/azureorbit/catkin_ws/src/canfilter/cruise_active_messages.pickle", "wb") as f:
+    with open(os.path.join(output_loc, "cruise_active_messages.pickle"), "wb") as f:
         pickle.dump(cruise_active_messages, f)
 
     print("cruise_enabled_messages")

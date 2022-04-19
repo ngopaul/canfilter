@@ -1,5 +1,5 @@
 .idea
-
+*__pycache__*
 # do not commit private driving files
 *.csv 
 # nor the result of processing these files
