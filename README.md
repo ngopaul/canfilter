@@ -69,3 +69,20 @@ telling the driver to press anything that would change a mode on the vehicle. Af
 has made the mode change, the passenger can then type the integer corresponding to the new mode.
 7. Enter `exit` or `quit` to exit listening. Then, the pickle files of message_relevancy_dict 
 should be saved to `output_loc`.
+
+## Example python script to process output pickled files
+
+    import pickle
+    with open("cruise_active_messages.pickle", "rb") as f:
+      cruise_active_messages = pickle.load(f)
+
+    with open("cruise_enabled_messages.pickle", "rb") as f:
+      cruise_enabled_messages = pickle.load(f)
+
+    from scripts.utils import *
+
+    cruise_active_scores = score_messages(cruise_active_messages)
+    cruise_enabled_scores = score_messages(cruise_enabled_messages)
+
+    cruise_active_scores.head()
+    cruise_enabled_scores.head()
