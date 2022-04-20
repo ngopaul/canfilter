@@ -1,5 +1,20 @@
 # canfilter
 
+This ROS package implements a way for two people to quickly decode cruise control 
+messages on a vehicle, live. It is testable by replaying a CSV file with CAN messages in it.
+
+To test with such a CSV file, it must have the headers:
+
+    Time | Bus | MessageID | Message | MessageLength
+
+where time is the UNIX timestamp, bus is the bus on which the CAN message was delivered
+(0 default), MessageID is the ID of the CAN message, Message is the hexademical string 
+containing the message payload, and MessageLength is the length of the message in bytes.
+
+The quickstart and commands sections below describe to test with a CSV file, as well as
+testing live on a vehicle. If testing live on a vehicle, a ROS node must be publishing
+to the relevant ROS topic as described in the quickstart.
+
 ## Setup Commands
 
     source /opt/ros/noetic/setup.bash
@@ -71,6 +86,11 @@ has made the mode change, the passenger can then type the integer corresponding 
 should be saved to `output_loc`.
 
 ## Example python script to process output pickled files
+
+After the ROS processes have finished, two pickled files are generated according to the
+command-line argument `output_loc`. These pickled files can are message relevancy dictionaries
+which store a mapping from message ID to bit-wise relevancy of each bit in the message (`True`
+if possibly relevant, `False` otherwise).
 
     import pickle
     with open("cruise_active_messages.pickle", "rb") as f:

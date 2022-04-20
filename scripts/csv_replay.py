@@ -21,13 +21,6 @@ import rospy
 import sys, time
 import numpy as np
 
-
-# !/usr/bin/env python
-# Initial Date: June 2020
-# Author: Rahul Bhadani
-# Copyright (c)  Rahul Bhadani, Arizona Board of Regents
-# All rights reserved.
-
 class csv_replayer():
     def __init__(self, ns, csvfile, time_col, msg_id_col, msg_col, realtime, msg_topic_name, **kwargs):
         print(f"Initializing csv_replay, ns: {ns}, csvfile: {csvfile}, time_col: {time_col}, "
