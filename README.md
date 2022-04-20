@@ -93,7 +93,7 @@ should be saved to `output_loc`.
 ## Example python script to process output pickled files
 
 After the ROS processes have finished, two pickled files are generated according to the
-command-line argument `output_loc`. These pickled files can are message relevancy dictionaries
+command-line argument `output_loc`. These pickled files are message relevancy dictionaries
 which store a mapping from message ID to bit-wise relevancy of each bit in the message (`True`
 if possibly relevant, `False` otherwise).
 
