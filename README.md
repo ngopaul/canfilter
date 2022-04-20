@@ -15,6 +15,11 @@ The quickstart and commands sections below describe to test with a CSV file, as 
 testing live on a vehicle. If testing live on a vehicle, a ROS node must be publishing
 to the relevant ROS topic as described in the quickstart.
 
+This ROS package was built with catkin. 
+
+`git clone https://github.com/ngopaul/canfilter.git` in `~/catkin_ws/src/` before
+running commands.
+
 ## Setup Commands
 
     source /opt/ros/noetic/setup.bash
@@ -44,7 +49,7 @@ a vehicle ALWAYS switch to UNKNOWN (-1) before physically pressing something in 
 then after changing to that mode in the vehicle, switch to that mode in the program. This
 will ensure you never incorrectly label a mode.
 
-    roslaunch launch/canfilter.launch known_mode_times:="/home/azureorbit/catkin_ws/src/canfilter/known_mode_times.txt" realtime:=false`
+    roslaunch launch/canfilter.launch known_mode_times:="/home/azureorbit/catkin_ws/src/canfilter/known_mode_times.txt" realtime:=false
 
     roslaunch launch/canfilter.launch
 
