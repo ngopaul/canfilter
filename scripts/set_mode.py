@@ -42,13 +42,13 @@ class CarMode(Enum):
 
 
 mode = CarMode.UNKNOWN
-# Map CAN ID to a list of the boundaries within that ID which are cruise control on (but no value is set)
+# Map (Bus, MessageID) to a list of the boundaries within that ID which are cruise control on (but no value is set)
 cruise_enabled_messages = {}
-# Map CAN ID to a list of the boundaries within that ID which are cruise control on AND active (speed value is set)
+# Map (Bus, MessageID) to a list of the boundaries within that ID which are cruise control on AND active (speed value is set)
 cruise_active_messages = {}
-# Map CAN ID to a list of binary values representing whether that bit has changed yet
+# Map (Bus, MessageID) to a list of binary values representing whether that bit has changed yet
 changed_messages = {}
-# Map CAN ID to the binary value recorded from the CAN bus.
+# Map (Bus, MessageID) to the binary value recorded from the CAN bus.
 previous_messages = {}
 
 mode_lock = Lock()
@@ -65,49 +65,51 @@ def process_can_message(message: Dict):
     if mode == CarMode.UNKNOWN:
         return
 
+    bus = message["Bus"]
     message_id = message["MessageID"]
     current_message = hex_to_binary(message["Message"], pad_to=64, return_np_bool_array=True)
+    bus_msg_id = (bus, message_id)
 
     if mode == CarMode.DRIVE_CRUISE_ENABLED:
-        if message_id not in previous_messages:
+        if bus_msg_id not in previous_messages:
             # a new message appeared when we entered the DRIVE_CRUISE_ENABLED state, this message must be relevant
-            cruise_enabled_messages[message_id] = np.ones(64).astype(bool)
+            cruise_enabled_messages[bus_msg_id] = np.ones(64).astype(bool)
         else:
-            if message_id not in cruise_enabled_messages:
-                cruise_enabled_messages[message_id] = np.zeros(64).astype(bool)
+            if bus_msg_id not in cruise_enabled_messages:
+                cruise_enabled_messages[bus_msg_id] = np.zeros(64).astype(bool)
             # otherwise, the relevant bits are only the ones that were not changing before, but also have changed now
-            cruise_enabled_messages[message_id] |= ~changed_messages[message_id] & \
-                                                  (previous_messages[message_id] != current_message)
+            cruise_enabled_messages[bus_msg_id] |= ~changed_messages[bus_msg_id] & \
+                                                  (previous_messages[bus_msg_id] != current_message)
     elif mode == CarMode.DRIVE_CRUISE_ACTIVE:
-        if message_id not in previous_messages:
+        if bus_msg_id not in previous_messages:
             # a new message appeared when we entered the DRIVE_CRUISE_ACTIVE state, this message must be relevant
-            cruise_active_messages[message_id] = np.ones(64).astype(bool)
+            cruise_active_messages[bus_msg_id] = np.ones(64).astype(bool)
         else:
-            if message_id not in cruise_active_messages:
-                cruise_active_messages[message_id] = np.zeros(64).astype(bool)
+            if bus_msg_id not in cruise_active_messages:
+                cruise_active_messages[bus_msg_id] = np.zeros(64).astype(bool)
             # otherwise, the relevant bits are only the ones that were not changing before, but also have changed now
-            cruise_active_messages[message_id] |= ~changed_messages[message_id] & \
-                                                  (previous_messages[message_id] != current_message)
-    elif message_id in previous_messages:
+            cruise_active_messages[bus_msg_id] |= ~changed_messages[bus_msg_id] & \
+                                                  (previous_messages[bus_msg_id] != current_message)
+    elif bus_msg_id in previous_messages:
         # make sure the cruise messages don't include anything that changed either; but skip the first time around
-        if message_id not in cruise_enabled_messages:
-            cruise_enabled_messages[message_id] = np.zeros(64).astype(bool)
-        cruise_enabled_messages[message_id] &= (previous_messages[message_id] == current_message)
-        if message_id not in cruise_active_messages:
-            cruise_active_messages[message_id] = np.zeros(64).astype(bool)
-        cruise_active_messages[message_id] &= (previous_messages[message_id] == current_message)
+        if bus_msg_id not in cruise_enabled_messages:
+            cruise_enabled_messages[bus_msg_id] = np.zeros(64).astype(bool)
+        cruise_enabled_messages[bus_msg_id] &= (previous_messages[bus_msg_id] == current_message)
+        if bus_msg_id not in cruise_active_messages:
+            cruise_active_messages[bus_msg_id] = np.zeros(64).astype(bool)
+        cruise_active_messages[bus_msg_id] &= (previous_messages[bus_msg_id] == current_message)
 
-    if message_id not in previous_messages:
+    if bus_msg_id not in previous_messages:
         # we haven't seen the message before, initialize as messages have changed yet
-        changed_messages[message_id] = np.zeros(64).astype(bool)
+        changed_messages[bus_msg_id] = np.zeros(64).astype(bool)
     else:
         # log the change in messages
-        changed_messages[message_id] |= (previous_messages[message_id] != current_message)
-    previous_messages[message_id] = current_message
+        changed_messages[bus_msg_id] |= (previous_messages[bus_msg_id] != current_message)
+    previous_messages[bus_msg_id] = current_message
 
 
 def process_ros_message(data, known_mode_time_and_state=None):
-    time_i, message_id, message = data.data.split("_")
+    time_i, bus, message_id, message, message_length = data.data.split(" ")
     time_i = float(time_i)
     message_id = int(message_id)
 
@@ -127,6 +129,7 @@ def process_ros_message(data, known_mode_time_and_state=None):
     process_can_message(
         {
             "Time": time,
+            "Bus": bus,
             "MessageID": message_id,
             "Message": message
         }

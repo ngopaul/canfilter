@@ -20,6 +20,12 @@ This ROS package was built with catkin.
 `git clone https://github.com/ngopaul/canfilter.git` in `~/catkin_ws/src/` before
 running commands.
 
+## Requirements
+
+- ROS. Tested with ROS Noetic on Ubuntu 20.04 LTSm, using catkin.
+- Python 3
+- [CAN-to-ROS]("https://github.com/jmscslgroup/can_to_ros/") if running on a vehicle
+
 ## Setup Commands
 
     source /opt/ros/noetic/setup.bash
@@ -74,20 +80,23 @@ Run these commands as the passenger in the vehicle, giving instructions to the d
 necessary.
 
 1. Change the argument `output_loc` in `canfilter.launch` to the location of the output
-folder where the pickle files of message_relevancy_dict should be saved.
-2. Start a ROS node publishing to the topic `{robot}/{msg_topic_name}` as defined in
-`canfilter.launch`. By default, this is `toyota/msg`. What should be published is:
-   1. `"{FloatTime}_{messageID}_{HexademicalValue}"` formatted as a string
+folder where the pickle files of message_relevancy_dict should be saved (`azureorbit` is the 
+name of my personal machine). 
+2. In [CAN-to-ROS]("https://github.com/jmscslgroup/can_to_ros/"), modify `src/vehicle_interface.cpp`,
+[line 180 - 183](https://github.com/jmscslgroup/can_to_ros/blob/8783cee220b919eca2785576b99ccdde86c23656/src/vehicle_interface.cpp#L180-L182),
+to remove the "if" statement. We want to publish ALL messages. 
 3. Comment out the `csv_replay.py` node in `canfilter.launch`
-4. Run the setup commands
-5. Run the second run command (with no arguments). This will start listening to the ROS topic 
+4. Run the [setup commands](#setup-commands)
+5. Start CAN-to-ROS. Verify that `/realtime_raw_data` is publishing with the command, 
+`rostopic echo -c /realtime_raw_data`.
+6. Run the second [run command](#run-commands) (with no arguments). This will start listening to the ROS topic 
 with the raw CAN messages. By default, the car mode will be UNKNOWN (-1). A prompt will show
 up asking for the Car Mode to change to.
-6. As the driver drives the vehicle, the passenger should direct them as to when they should
+7. As the driver drives the vehicle, the passenger should direct them as to when they should
 switch to a different mode. The passenger should always change to mode UNKNOWN (-1) before
 telling the driver to press anything that would change a mode on the vehicle. After the driver
 has made the mode change, the passenger can then type the integer corresponding to the new mode.
-7. Enter `exit` or `quit` to exit listening. Then, the pickle files of message_relevancy_dict 
+8. Enter `exit` or `quit` to exit listening. Then, the pickle files of message_relevancy_dict 
 should be saved to `output_loc`.
 
 ## Example python script to process output pickled files

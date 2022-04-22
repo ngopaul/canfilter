@@ -21,8 +21,10 @@ import rospy
 import sys, time
 import numpy as np
 
+
 class csv_replayer():
-    def __init__(self, ns, csvfile, time_col, msg_id_col, msg_col, realtime, msg_topic_name, **kwargs):
+    def __init__(self, ns, csvfile, time_col, bus_col, msg_id_col, msg_col, msg_length_col, realtime, msg_topic_name,
+                 **kwargs):
         print(f"Initializing csv_replay, ns: {ns}, csvfile: {csvfile}, time_col: {time_col}, "
               f"msg_id_col: {msg_id_col}, msg_col: {msg_col}")
         self.ns = ns
@@ -43,22 +45,21 @@ class csv_replayer():
         dataframe = pd.read_csv(csvfile)
         dataframe.dropna(inplace=True)
 
-        if time_col in dataframe.columns:
-            self.data['Time'] = dataframe[time_col]
-        else:
-            raise KeyError("{} column not available in {}".format(time_col, csvfile))
+        map_csv_columns_to_desired_name = {
+            time_col: "Time",
+            bus_col: "Bus",
+            msg_id_col: "MessageID",
+            msg_col: "Message",
+            msg_length_col: "MessageLength"
+        }
 
-        if msg_id_col in dataframe.columns:
-            self.data['MessageID'] = dataframe[msg_id_col]
-        else:
-            raise KeyError("{} column not available in {}".format(msg_id_col, csvfile))
+        for csv_column_name, desired_column_name in map_csv_columns_to_desired_name.items():
+            if csv_column_name in dataframe.columns:
+                self.data[desired_column_name] = dataframe[csv_column_name]
+            else:
+                raise KeyError("{} column not available in {}".format(csv_column_name, csvfile))
 
-        if msg_col in dataframe.columns:
-            self.data['Message'] = dataframe[msg_col]
-        else:
-            raise KeyError("{} column not available in {}".format(msg_col, csvfile))
-
-        ## Check for monotonicity of time
+        # Check for monotonicity of time
         time_diff = np.diff(self.data['Time'])
         if not np.all(time_diff) >= 0:
             raise ValueError("Time is not monotonically increasing in the provided dataset")
@@ -74,8 +75,10 @@ class csv_replayer():
         """
 
         self.current_time = self.data.iloc[0]['Time']
+        next_bus = self.data.iloc[0]['Bus']
         next_msg_id = self.data.iloc[0]['MessageID']
         next_msg = self.data.iloc[0]['Message']
+        next_msg_length = int(self.data.iloc[0]['MessageLength'])  # is default float, force to int
 
         # print(f"Time: {self.current_time}, Message: {next_msg}")
 
@@ -88,7 +91,7 @@ class csv_replayer():
         # Remove the row just read from the dataframe
         self.data = self.data.iloc[1:]
 
-        new_message = f"{self.current_time}_{next_msg_id}_{next_msg}"
+        new_message = f"{self.current_time} {next_bus} {next_msg_id} {next_msg} {next_msg_length}"
 
         self.msg_publisher.publish(new_message)
 
@@ -99,12 +102,14 @@ def main(argv):
 
     csvfile = argv[0]
     time_col = argv[1]
-    msg_id_col = argv[2]
-    msg_col = argv[3]
-    realtime = argv[4]
-    msg_topic_name = argv[5]
+    bus_col = argv[2]
+    msg_id_col = argv[3]
+    msg_col = argv[4]
+    msg_length_col = argv[5]
+    realtime = argv[6]
+    msg_topic_name = argv[7]
     realtime = (realtime == 'true')
-    node = csv_replayer(ns, csvfile, time_col, msg_id_col, msg_col, realtime, msg_topic_name)
+    node = csv_replayer(ns, csvfile, time_col, bus_col, msg_id_col, msg_col, msg_length_col, realtime, msg_topic_name)
 
     # rate = rospy.Rate(20) # 20 Hz publish rate
 

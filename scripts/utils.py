@@ -348,7 +348,7 @@ def score_messages(message_relevancy_dict: Dict) -> pd.DataFrame:
     """
     Given a dictionary message_relevancy dictionary, return the scores of each of the relevant messages, in order,
     as a pandas dataframe.
-    :param message_relevancy_dict: Mapping from message ID to a boolean array, where the boolean values represent
+    :param message_relevancy_dict: Mapping from (Bus, MessageID) to a boolean array, where the boolean values represent
         whether the bit is relevant or not. There may be some binary bits labeled as relevant when they are not;
         this is why scoring them is important.
     :return:
@@ -362,7 +362,8 @@ def score_messages(message_relevancy_dict: Dict) -> pd.DataFrame:
 
     message_scores = []
 
-    for messageID, boolean_relevancy in message_relevancy_dict.items():
+    for bus_msg_id, boolean_relevancy in message_relevancy_dict.items():
+        bus, message_id = bus_msg_id
         run_score = 0
         run_values, run_starts, run_lengths = find_runs(boolean_relevancy)
         for i, run_value in enumerate(run_values):
@@ -377,7 +378,8 @@ def score_messages(message_relevancy_dict: Dict) -> pd.DataFrame:
         score = run_score + true_count_score
         message_scores.append(
             {
-                "MessageID": messageID,
+                "Bus": bus,
+                "MessageID": message_id,
                 "Score": score,
                 "BitwiseRelevancy": ''.join(boolean_relevancy.astype(int).astype(str))
             }
