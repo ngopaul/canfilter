@@ -363,6 +363,7 @@ def score_messages(message_relevancy_dict: Dict) -> pd.DataFrame:
     message_scores = []
 
     for bus_msg_id, boolean_relevancy in message_relevancy_dict.items():
+        msg_len_in_bits = len(boolean_relevancy)
         bus, message_id = bus_msg_id
         run_score = 0
         run_values, run_starts, run_lengths = find_runs(boolean_relevancy)
@@ -374,7 +375,7 @@ def score_messages(message_relevancy_dict: Dict) -> pd.DataFrame:
                     run_score += 2
                 elif run_lengths[i] >= 7:
                     run_score += 3
-        true_count_score = sum(boolean_relevancy) / 64 * 5
+        true_count_score = sum(boolean_relevancy) / msg_len_in_bits * 5
         score = run_score + true_count_score
         message_scores.append(
             {

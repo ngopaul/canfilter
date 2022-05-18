@@ -50,6 +50,8 @@ cruise_active_messages = {}
 changed_messages = {}
 # Map (Bus, MessageID) to the binary value recorded from the CAN bus.
 previous_messages = {}
+# Map messages to their maximum lengths in bits
+message_id_to_bit_length = {}
 
 mode_lock = Lock()
 known_mode_index = 0
@@ -67,16 +69,35 @@ def process_can_message(message: Dict):
 
     bus = message["Bus"]
     message_id = message["MessageID"]
-    current_message = hex_to_binary(message["Message"], pad_to=64, return_np_bool_array=True)
+    size_in_bytes = int(len(message["Message"]) // 2)
+    size_in_bits = size_in_bytes * 8
+    previous_max_bit_length = message_id_to_bit_length[message_id]
+    message_id_to_bit_length[message_id] = max(size_in_bits, message_id_to_bit_length.get(message_id, 0))
+    max_bit_length = message_id_to_bit_length[message_id]
+    
+    if max_bit_length > previous_max_bit_length:
+        # pad the other arrays to the correct length
+        pad_width = (max_bit_length - previous_max_bit_length, 0)
+        if bus_msg_id in changed_messages:
+            changed_messages[bus_msg_id] = np.pad(changed_messages[bus_msg_id], pad_width, constant_values=False)
+        if bus_msg_id in previous_messages:
+            previous_messages[bus_msg_id] = np.pad(previous_messages[bus_msg_id], pad_width, constant_values=False)
+        if bus_msg_id in cruise_enabled_messages:
+            cruise_enabled_messages[bus_msg_id] = np.pad(cruise_enabled_messages[bus_msg_id], pad_width, constant_values=False)
+        if bus_msg_id in cruise_active_messages:
+            cruise_active_messages[bus_msg_id] = np.pad(cruise_active_messages[bus_msg_id], pad_width, constant_values=False)
+        
+    
+    current_message = hex_to_binary(message["Message"], pad_to=max_bit_length, return_np_bool_array=True)
     bus_msg_id = (bus, message_id)
 
     if mode == CarMode.DRIVE_CRUISE_ENABLED:
         if bus_msg_id not in previous_messages:
             # a new message appeared when we entered the DRIVE_CRUISE_ENABLED state, this message must be relevant
-            cruise_enabled_messages[bus_msg_id] = np.ones(64).astype(bool)
+            cruise_enabled_messages[bus_msg_id] = np.ones(max_bit_length).astype(bool)
         else:
             if bus_msg_id not in cruise_enabled_messages:
-                cruise_enabled_messages[bus_msg_id] = np.zeros(64).astype(bool)
+                cruise_enabled_messages[bus_msg_id] = np.zeros(max_bit_length).astype(bool)
             # otherwise, the relevant bits are only the ones that were not changing before, but also have changed now
             cruise_enabled_messages[bus_msg_id] |= ~changed_messages[bus_msg_id] & \
                                                   (previous_messages[bus_msg_id] != current_message)
@@ -86,22 +107,22 @@ def process_can_message(message: Dict):
             cruise_active_messages[bus_msg_id] = np.ones(64).astype(bool)
         else:
             if bus_msg_id not in cruise_active_messages:
-                cruise_active_messages[bus_msg_id] = np.zeros(64).astype(bool)
+                cruise_active_messages[bus_msg_id] = np.zeros(max_bit_length).astype(bool)
             # otherwise, the relevant bits are only the ones that were not changing before, but also have changed now
             cruise_active_messages[bus_msg_id] |= ~changed_messages[bus_msg_id] & \
                                                   (previous_messages[bus_msg_id] != current_message)
     elif bus_msg_id in previous_messages:
         # make sure the cruise messages don't include anything that changed either; but skip the first time around
         if bus_msg_id not in cruise_enabled_messages:
-            cruise_enabled_messages[bus_msg_id] = np.zeros(64).astype(bool)
+            cruise_enabled_messages[bus_msg_id] = np.zeros(max_bit_length).astype(bool)
         cruise_enabled_messages[bus_msg_id] &= (previous_messages[bus_msg_id] == current_message)
         if bus_msg_id not in cruise_active_messages:
-            cruise_active_messages[bus_msg_id] = np.zeros(64).astype(bool)
+            cruise_active_messages[bus_msg_id] = np.zeros(max_bit_length).astype(bool)
         cruise_active_messages[bus_msg_id] &= (previous_messages[bus_msg_id] == current_message)
 
     if bus_msg_id not in previous_messages:
         # we haven't seen the message before, initialize as messages have changed yet
-        changed_messages[bus_msg_id] = np.zeros(64).astype(bool)
+        changed_messages[bus_msg_id] = np.zeros(max_bit_length).astype(bool)
     else:
         # log the change in messages
         changed_messages[bus_msg_id] |= (previous_messages[bus_msg_id] != current_message)
